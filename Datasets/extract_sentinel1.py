@@ -10,10 +10,9 @@ from typing import Optional, Tuple
 
 class extract_sentinel1:
 
-    path_to_image_folder = "Sentinel1_Images/"
     project_name = "ee-sentinel-analysis"
 
-    def __init__(self, roi):
+    def __init__(self, roi, roi_name):
 
         ee.Authenticate()
         ee.Initialize(project=self.project_name)
@@ -24,6 +23,7 @@ class extract_sentinel1:
 
         # Create Region of Interest
         self.polygon_roi = ee.Geometry.Polygon(roi)
+        self.path_to_image_folder = f"Sentinel1_Images_{roi_name}/"
 
         # Preparing new timestamp
         self.old_timestamp=(0,0,0)
@@ -163,7 +163,7 @@ class extract_sentinel1:
                 url = vv_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
                 response = requests.get(url, stream=True)
 
-                vv_tif_path = extract_sentinel1.path_to_image_folder + string_date+"_vv.png"
+                vv_tif_path = self.path_to_image_folder + string_date+"_vv.png"
                 with open(vv_tif_path, 'wb') as file:
                     file.write(response.content)
 
@@ -173,7 +173,7 @@ class extract_sentinel1:
                 url = vh_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
                 response = requests.get(url, stream=True)
 
-                vh_tif_path = extract_sentinel1.path_to_image_folder + string_date+"_vh.png"
+                vh_tif_path = self.path_to_image_folder + string_date+"_vh.png"
                 with open(vh_tif_path, 'wb') as file:
                     file.write(response.content)
 
@@ -208,11 +208,12 @@ if __name__ == '__main__':
         [2.470013829667166, 48.49718725242921],
         [2.470013829667166, 48.49155618695181]
     ]
+    roi_name = "Beauvais"
 
     time_start = (10,3,2017)
     time_stop  = (14,3,2017)
 
-    data = extract_sentinel1(beauvais_roi)
+    data = extract_sentinel1(beauvais_roi, roi_name)
 
     data.save(time_start, time_stop)
 
