@@ -1,0 +1,161 @@
+#Images
+import cv2
+import matplotlib.pyplot as plt
+
+#EarthEngine
+import ee
+
+#Extra
+import datetime
+import os
+import requests
+import sys
+
+class extract_sentinel1:
+
+    path_to_image_folder = "Sentinel1_Images/"
+
+    def __init__(self, roi):
+
+        ee.Authenticate()
+        ee.Initialize(project="ee-sentinel-analysis")
+
+        # Load the Sentinel-1 ImageCollection, filter to October 1, 2020.
+        self.sentinel_1 = ee.ImageCollection('COPERNICUS/S1_GRD')
+        self.current_sent1 = self.sentinel_1
+
+        self.polygon_roi = ee.Geometry.Polygon(beauvais_roi)
+
+        self.old_timestamp=(0,0,0)
+    
+    def filter_date(self, timestamp):
+
+        self.old_timestamp = timestamp
+
+        timestamp_begin = datetime.date(timestamp[2], timestamp[1], timestamp[0]).strftime('%y-%m-%d')
+        timestamp_end   = datetime.date(timestamp[2], timestamp[1], timestamp[0]+1).strftime('%y-%m-%d')
+
+        self.current_sent1 = self.current_sent1.filterDate(timestamp_begin, timestamp_end)
+
+        # Filter the Sentinel-1 collection by metadata properties.
+        self.vv_vh_iw = (
+            self.sentinel_1.filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+            .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+            .filter(ee.Filter.eq('instrumentMode', 'IW'))
+        )
+
+
+    def get_vv_vh_iw_asc(self, timestamp):
+
+        if timestamp!=self.old_timestamp:
+            self.filter_date(timestamp)
+        vv_vh_iw_asc  = self.vv_vh_iw.filter(ee.Filter.eq('orbitProperties_pass', 'ASCENDING')).mean()
+
+        return vv_vh_iw_asc.clip(self.polygon_roi)
+    
+    def get_vv_vh_iw_desc(self, timestamp):
+        
+        if timestamp!=self.old_timestamp:
+            self.filter_date(timestamp)
+        vv_vh_iw_desc = self.vv_vh_iw.filter(ee.Filter.eq('orbitProperties_pass', 'DESCENDING')).mean()
+
+        return vv_vh_iw_desc.clip(self.polygon_roi)
+
+    def get_vv(self, timestamp):
+        
+        if timestamp!=self.old_timestamp:
+            self.filter_date(timestamp)
+        vv_image = self.vv_vh_iw.select('VV').mean()  # Mean VV for the day
+
+        return vv_image.clip(self.polygon_roi)
+
+    def get_vh(self, timestamp):
+
+        if timestamp!=self.old_timestamp:
+            self.filter_date(timestamp)
+        vh_image = self.vv_vh_iw.select('VH').mean()  # Mean VH for the day
+
+        return vh_image.clip(self.polygon_roi)
+    
+    def save(self, start, end=None, step_day=1, is_vv=True, is_vh=True):
+
+        if not os.path.exists(self.path_to_image_folder):
+            os.mkdir(self.path_to_image_folder)
+
+        current_date = datetime.date(start[2], start[1], start[0])
+        if end == None:
+            date_end = current_date
+
+        else:
+            date_end     = datetime.date(end[2], end[1], end[0])
+
+        if current_date > date_end :
+            print("\n/!\\ Ending Date is BEFORE Starting Date /!\\")
+            return
+        
+        total_days = (date_end + datetime.timedelta(days=step_day) - current_date).days
+        print(f"\nSaving images in \033[34m{os.getcwd()}/{self.path_to_image_folder}\033[0m")
+        longueur_barre = 30 
+        i = 0
+        pourcentage = int((i / total_days) * 100)
+        fill  = '#' * int((i / total_days) * longueur_barre)
+        blank = '-' * (longueur_barre - len(fill))
+        
+        sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {current_date}')
+        sys.stdout.flush()
+
+        while current_date <= date_end:
+
+            string_date = current_date.strftime("%d_%m_%y")
+            tuple_date  = (current_date.day, current_date.month, current_date.year)
+
+            if is_vv:
+                vv_image = self.get_vv(tuple_date)
+                url = vv_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
+                response = requests.get(url, stream=True)
+
+                vv_tif_path = extract_sentinel1.path_to_image_folder + string_date+"_vv.png"
+                with open(vv_tif_path, 'wb') as file:
+                    file.write(response.content)
+
+
+            if is_vh:
+                vh_image = self.get_vh(tuple_date)
+                url = vh_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
+                response = requests.get(url, stream=True)
+
+                vh_tif_path = extract_sentinel1.path_to_image_folder + string_date+"_vh.png"
+                with open(vh_tif_path, 'wb') as file:
+                    file.write(response.content)
+
+            current_date += datetime.timedelta(days=step_day)
+            
+            i += 1
+            pourcentage = int((i / total_days) * 100)
+            fill  = '#' * int((i / total_days) * longueur_barre)
+            blank = '-' * (longueur_barre - len(fill))
+            
+            sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {current_date}')
+            sys.stdout.flush()
+
+        print("\nDone !\n")
+
+
+
+if __name__ == '__main__':
+    beauvais_roi = [
+        [2.470013829667166, 48.49155618695181],
+        [2.4864504065104276, 48.49155618695181],
+        [2.4864504065104276, 48.49718725242921],
+        [2.470013829667166, 48.49718725242921],
+        [2.470013829667166, 48.49155618695181]
+    ]
+
+    time_start = (10,3,2017)
+    time_stop  = (14,3,2017)
+
+    data = extract_sentinel1(beauvais_roi)
+
+
+    data.save(time_start, time_stop)
+
