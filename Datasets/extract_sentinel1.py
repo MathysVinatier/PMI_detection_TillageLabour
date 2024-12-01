@@ -79,7 +79,33 @@ class extract_sentinel1:
         vh_image = self.vv_vh_iw.select('VH').mean()  # Mean VH for the day
 
         return vh_image.clip(self.polygon_roi)
-    
+
+    def __write_log(self, message, context=None):
+        """
+        Logs an error message to `extraction.log` with a timestamp and optional context.
+
+        Parameters:
+            message (str): The error message to log.
+            context (str): Additional context about the error (e.g., input values).
+        """
+        log_file = "./extraction.log"
+        
+        # Check if the log file exists
+        if not os.path.exists(log_file):
+            # Create the file if it doesn't exist
+            with open(log_file, 'w') as f:
+                f.write("Error Log\n")
+                f.write("="*40 + "\n")
+        
+        # Append the new error to the log file
+        with open(log_file, 'a') as f:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{timestamp}] ERROR: {message} ")
+            if context:
+                f.write(f"{context}\n")
+
+        return
+
     def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1, is_vv=True, is_vh=True):
         '''
         Save images based on the provided date range.
@@ -152,40 +178,44 @@ class extract_sentinel1:
         sys.stdout.flush()
 
         while current_date <= date_end:
-
+                
             # Get different dtype for current timestamp
             string_date = current_date.strftime("%d_%m_%y")
             tuple_date  = (current_date.day, current_date.month, current_date.year)
 
-            # If user wants to save vv images
-            if is_vv:
-                vv_image = self.__get_vv(tuple_date)
-                url = vv_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
-                response = requests.get(url, stream=True)
+            try :
+                # If user wants to save vv images
+                if is_vv:
+                    vv_image = self.__get_vv(tuple_date)
+                    url = vv_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
+                    response = requests.get(url, stream=True)
 
-                vv_tif_path = self.path_to_image_folder + string_date+"_vv.png"
-                with open(vv_tif_path, 'wb') as file:
-                    file.write(response.content)
+                    vv_tif_path = self.path_to_image_folder + string_date+"_vv.png"
+                    with open(vv_tif_path, 'wb') as file:
+                        file.write(response.content)
 
-            # If user wants to save vh images
-            if is_vh:
-                vh_image = self.__get_vh(tuple_date)
-                url = vh_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
-                response = requests.get(url, stream=True)
+                # If user wants to save vh images
+                if is_vh:
+                    vh_image = self.__get_vh(tuple_date)
+                    url = vh_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
+                    response = requests.get(url, stream=True)
 
-                vh_tif_path = self.path_to_image_folder + string_date+"_vh.png"
-                with open(vh_tif_path, 'wb') as file:
-                    file.write(response.content)
+                    vh_tif_path = self.path_to_image_folder + string_date+"_vh.png"
+                    with open(vh_tif_path, 'wb') as file:
+                        file.write(response.content)
+
+            except Exception as e:
+                self.__write_log(e, context=f'({current_date})')
 
             # Increment current_date by the given step
             current_date += datetime.timedelta(days=step_day)
-            
+
             # Progress bar print out
             i += 1
             pourcentage = int((i / total_days) * 100)
             fill  = '#' * int((i / total_days) * longueur_barre)
             blank = '-' * (longueur_barre - len(fill))
-            
+
             elapsed_time = datetime.datetime.now() - script_begin
             sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {current_date} (elapsed time : {round(elapsed_time.total_seconds(), 3)} s)')
             sys.stdout.flush()
@@ -200,20 +230,20 @@ if __name__ == '__main__':
     | This is an usage example to save Sentinel1 images from Beauvais ROI |
     | from 10th of March 2017 to 14th of March 2017                       |
     +---------------------------------------------------------------------+
+    -> ROI : https://geojson.io/
     """
     beauvais_roi = [
-        [2.470013829667166, 48.49155618695181],
-        [2.4864504065104276, 48.49155618695181],
-        [2.4864504065104276, 48.49718725242921],
-        [2.470013829667166, 48.49718725242921],
-        [2.470013829667166, 48.49155618695181]
+        [2.4717675770780545, 48.49202395041567],
+        [2.4735192968839783, 48.49453601542879],
+        [2.47749656234393, 48.492794710870555],
+        [2.4757161258208384, 48.49032062341078]
     ]
     roi_name = "Beauvais"
 
-    time_start = (10,3,2017)
-    time_stop  = (14,3,2017)
+    time_start = (1,1,2017)
+    time_stop  = (31,12,2017)
 
     data = extract_sentinel1(beauvais_roi, roi_name)
 
-    data.save(time_start, time_stop)
+    data.save(time_start, time_stop, 15)
 
