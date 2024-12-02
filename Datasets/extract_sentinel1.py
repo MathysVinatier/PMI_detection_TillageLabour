@@ -7,6 +7,8 @@ import os
 import requests
 import sys
 from typing import Optional, Tuple
+import threading
+import time
 
 class extract_sentinel1:
 
@@ -27,24 +29,25 @@ class extract_sentinel1:
 
         # Preparing new timestamp
         self.old_timestamp=(0,0,0)
-    
+
     def __filter_date(self, timestamp):
 
         # Update timestamp
         self.old_timestamp = timestamp
 
         # Convert tuple to time
-        timestamp_begin = datetime.date(timestamp[2], timestamp[1], timestamp[0]).strftime('%y-%m-%d')
-        timestamp_end   = datetime.date(timestamp[2], timestamp[1], timestamp[0]+1).strftime('%y-%m-%d')
+        timestamp_begin = datetime.date(timestamp[2], timestamp[1], timestamp[0])
+        timestamp_end   = timestamp_begin + datetime.timedelta(days=2)
 
         # Get timestamped GEE
-        self.current_sent1 = self.current_sent1.filterDate(timestamp_begin, timestamp_end)
+        self.period = ee.Filter.date(timestamp_begin.strftime('%Y-%m-%d'), timestamp_end.strftime('%Y-%m-%d'))
 
         # Filter the Sentinel-1 collection by metadata properties.
         self.vv_vh_iw = (
             self.sentinel_1.filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
             .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
             .filter(ee.Filter.eq('instrumentMode', 'IW'))
+            .filter(self.period)
         )
 
 
@@ -106,6 +109,31 @@ class extract_sentinel1:
 
         return
 
+    def __loading_bar(self, step_day, date_end):
+
+        script_begin = datetime.datetime.now() # Used to get elapsed time
+        start_date = self.current_date
+
+        # Creation of the progress bar
+        total_days = (date_end + datetime.timedelta(days=step_day) - self.current_date).days
+        print(f"\nSaving images in \033[34m{os.getcwd()}/{self.path_to_image_folder}\033[0m")
+
+        longueur_barre = 30 
+        i = 0
+
+        while self.current_date <= date_end:
+        # Progress bar print out
+            i = (self.current_date - start_date).days
+            pourcentage = int((i / total_days) * 100)
+            fill  = '=' * int((i / total_days) * longueur_barre)
+            blank = '-' * (longueur_barre - len(fill))
+
+            elapsed_time = datetime.datetime.now() - script_begin
+            sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {self.current_date} (elapsed time : {int(elapsed_time.total_seconds())} s)')
+            sys.stdout.flush()
+            time.sleep(1)
+
+
     def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1, is_vv=True, is_vh=True):
         '''
         Save images based on the provided date range.
@@ -145,49 +173,34 @@ class extract_sentinel1:
             os.mkdir(self.path_to_image_folder)
 
         # Get the first datetime of the timestamp
-        current_date = datetime.date(start[2], start[1], start[0])
+        self.current_date = datetime.date(start[2], start[1], start[0])
 
         # Handle the whether it is a unique timestamp or not
         if end == None:
-            date_end = current_date
+            date_end = self.current_date
 
         else:
             date_end     = datetime.date(end[2], end[1], end[0])
 
         # Handle timestamps order issue
-        if current_date > date_end :
+        if self.current_date > date_end :
             print("\n/!\\ Ending Date is BEFORE Starting Date /!\\")
             return
-        
-        script_begin = datetime.datetime.now() # Used to get elapsed time
-        
-        # Creation of the progress bar
-        total_days = (date_end + datetime.timedelta(days=step_day) - current_date).days
-        print(f"\nSaving images in \033[34m{os.getcwd()}/{self.path_to_image_folder}\033[0m")
-        longueur_barre = 30 
-        i = 0
-        pourcentage = int((i / total_days) * 100)
-        fill  = '#' * int((i / total_days) * longueur_barre)
-        blank = '-' * (longueur_barre - len(fill))
-        
-        # Get current elapsed time
-        elapsed_time = datetime.datetime.now() - script_begin
 
-        # Print out the progress bar
-        sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {current_date} (elapsed time : {round(elapsed_time.total_seconds(), 3)} s)')
-        sys.stdout.flush()
+        threading.Thread(target=lambda : self.__loading_bar(step_day, date_end)).start()
 
-        while current_date <= date_end:
+        while self.current_date <= date_end:
                 
             # Get different dtype for current timestamp
-            string_date = current_date.strftime("%d_%m_%y")
-            tuple_date  = (current_date.day, current_date.month, current_date.year)
+            string_date = self.current_date.strftime("%d_%m_%y")
+            tuple_date  = (self.current_date.day, self.current_date.month, self.current_date.year)
 
             try :
                 # If user wants to save vv images
                 if is_vv:
                     vv_image = self.__get_vv(tuple_date)
-                    url = vv_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
+
+                    url = vv_image.getThumbURL({'min': -25, 'max': 0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
                     response = requests.get(url, stream=True)
 
                     vv_tif_path = self.path_to_image_folder + string_date+"_vv.png"
@@ -205,20 +218,10 @@ class extract_sentinel1:
                         file.write(response.content)
 
             except Exception as e:
-                self.__write_log(e, context=f'({current_date})')
+                self.__write_log(e, context=f'({self.current_date})')
 
             # Increment current_date by the given step
-            current_date += datetime.timedelta(days=step_day)
-
-            # Progress bar print out
-            i += 1
-            pourcentage = int((i / total_days) * 100)
-            fill  = '#' * int((i / total_days) * longueur_barre)
-            blank = '-' * (longueur_barre - len(fill))
-
-            elapsed_time = datetime.datetime.now() - script_begin
-            sys.stdout.write(f'\r[{fill}{blank}] {pourcentage}% - Date : {current_date} (elapsed time : {round(elapsed_time.total_seconds(), 3)} s)')
-            sys.stdout.flush()
+            self.current_date += datetime.timedelta(days=step_day)
 
         print("\nDone !\n")
 
@@ -240,8 +243,8 @@ if __name__ == '__main__':
     ]
     roi_name = "Beauvais"
 
-    time_start = (1,1,2017)
-    time_stop  = (31,12,2017)
+    time_start = (1,1,2023)
+    time_stop  = (1,1,2024)
 
     data = extract_sentinel1(beauvais_roi, roi_name)
 
