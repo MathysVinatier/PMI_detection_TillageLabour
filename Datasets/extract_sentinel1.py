@@ -121,7 +121,7 @@ class extract_sentinel1:
         longueur_barre = 30 
         i = 0
 
-        while self.current_date <= date_end:
+        while self.current_date <= date_end + datetime.timedelta(days=step_day):
         # Progress bar print out
             i = (self.current_date - start_date).days
             pourcentage = int((i / total_days) * 100)
@@ -243,8 +243,8 @@ if __name__ == '__main__':
     ]
     roi_name = "Beauvais"
 
-    time_start = (1,1,2023)
-    time_stop  = (1,1,2024)
+    time_start = (1,1,2024)
+    time_stop  = (1,1,2025)
 
     data = extract_sentinel1(beauvais_roi, roi_name)
 
