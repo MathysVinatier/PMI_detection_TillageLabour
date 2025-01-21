@@ -53,6 +53,18 @@ class extract_sentinel2:
         )
 
         return image.updateMask(mask).divide(10000)
+    
+    def __calculate_ndvi(self, image):
+        """Calculates the NDVI for a Sentinel-2 image.
+
+        Args:
+            image (ee.Image): A Sentinel-2 image.
+
+        Returns:
+            ee.Image: An image with an additional NDVI band.
+        """
+        ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI')
+        return image.addBands(ndvi)
 
     def __filter_date(self, timestamp):
 
@@ -72,9 +84,7 @@ class extract_sentinel2:
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)).map(self.mask_s2_clouds)
         )
 
-        image_sent2_mean = image_sent2.mean()
-
-        return image_sent2_mean.clip(self.polygon_roi)
+        return image_sent2
 
     def __write_log(self, message, context=None):
         """
@@ -127,7 +137,7 @@ class extract_sentinel2:
             time.sleep(1)
 
 
-    def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1):
+    def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1, is_RGB = True, is_NDVI = True):
         '''
         Save images based on the provided date range.
 
@@ -186,7 +196,7 @@ class extract_sentinel2:
             try :
                 sent2_image = self.__filter_date(tuple_date)
                 
-                pixel_count = sent2_image.reduceRegion(
+                pixel_count = sent2_image.mean().reduceRegion(
                     reducer=ee.Reducer.count(),
                     geometry=self.polygon_roi,
                     scale=30
@@ -194,13 +204,26 @@ class extract_sentinel2:
 
                 if pixel_count is None or pixel_count == 0:
                     raise ValueError("Empty ROI")
+                
+                if is_RGB :
+                    image_sent2_RGB = sent2_image.mean().clip(self.polygon_roi)
+                    url_RGB = image_sent2_RGB.getThumbURL({'min': 0.0, 'max': 0.3, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['B4', 'B3', 'B2'], 'format': 'png'})
+                    response_RGB = requests.get(url_RGB, stream=True)
 
-                url = sent2_image.getThumbURL({'min': 0.0, 'max': 0.3, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['B4', 'B3', 'B2'], 'format': 'png'})
-                response = requests.get(url, stream=True)
+                    tif_path_RGB = self.path_to_image_folder + string_date+"_RGB.png"
+                    with open(tif_path_RGB, 'wb') as file:
+                        file.write(response_RGB.content)
+                
+                if is_NDVI:
+                    print("Going to NDVUI")
+                    sent2_NDVI = sent2_image.map(self.__calculate_ndvi)
+                    image_sent2_NDVI = sent2_NDVI.mean().clip(self.polygon_roi)
+                    url_NDVI = image_sent2_NDVI.getThumbURL({'min': 0.0, 'max': 1.0, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['NDVI'], 'format': 'png'})
+                    response_NDVI = requests.get(url_NDVI, stream=True)
 
-                tif_path = self.path_to_image_folder + string_date+".png"
-                with open(tif_path, 'wb') as file:
-                    file.write(response.content)
+                    tif_path_NDVI = self.path_to_image_folder + string_date+"_NDVI.png"
+                    with open(tif_path_NDVI, 'wb') as file:
+                        file.write(response_NDVI.content)
 
             except Exception as e:
                 self.__write_log(e, context=f'({self.current_date})')
