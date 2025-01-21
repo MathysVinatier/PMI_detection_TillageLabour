@@ -196,9 +196,19 @@ class extract_sentinel1:
             tuple_date  = (self.current_date.day, self.current_date.month, self.current_date.year)
 
             try :
+
                 # If user wants to save vv images
                 if is_vv:
                     vv_image = self.__get_vv(tuple_date)
+
+                    pixel_count = vv_image.reduceRegion(
+                        reducer=ee.Reducer.count(),
+                        geometry=self.polygon_roi,
+                        scale=30
+                    ).get('VV').getInfo()
+
+                    if pixel_count is None or pixel_count == 0:
+                        raise ValueError("Empty ROI")
 
                     url = vv_image.getThumbURL({'min': -25, 'max': 0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
                     response = requests.get(url, stream=True)
@@ -210,6 +220,16 @@ class extract_sentinel1:
                 # If user wants to save vh images
                 if is_vh:
                     vh_image = self.__get_vh(tuple_date)
+
+                    pixel_count = vh_image.reduceRegion(
+                        reducer=ee.Reducer.count(),
+                        geometry=self.polygon_roi,
+                        scale=30
+                    ).get('VH').getInfo()
+
+                    if pixel_count is None or pixel_count == 0:
+                        raise ValueError("Empty ROI")
+
                     url = vh_image.getThumbURL({'min': -20, 'max': -0, 'dimensions': 512, 'region': self.polygon_roi, 'format': 'png'})
                     response = requests.get(url, stream=True)
 
@@ -244,9 +264,9 @@ if __name__ == '__main__':
     roi_name = "Beauvais"
 
     time_start = (1,1,2023)
-    time_stop  = (1,1,2024)
+    time_stop  = (1,3,2023)
 
     data = extract_sentinel1(beauvais_roi, roi_name)
 
-    data.save(time_start, time_stop, 15)
+    data.save(time_start, time_stop)
 
