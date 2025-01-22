@@ -121,7 +121,9 @@ class extract_sentinel1:
         longueur_barre = 30 
         i = 0
 
-        while self.current_date <= date_end:
+        self.bar_running = True
+
+        while (self.current_date <= date_end) and (self.bar_running==True):
         # Progress bar print out
             i = (self.current_date - start_date).days
             pourcentage = int((i / total_days) * 100)
@@ -242,7 +244,7 @@ class extract_sentinel1:
 
             # Increment current_date by the given step
             self.current_date += datetime.timedelta(days=step_day)
-
+        self.bar_running = False
         print("\nDone !\n")
 
 
@@ -280,5 +282,5 @@ if __name__ == '__main__':
 
     data = extract_sentinel1(catillon_roi, roi_name)
 
-    data.save(time_start, time_stop)
+    data.save(time_start)
 
