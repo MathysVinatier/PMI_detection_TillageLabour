@@ -153,6 +153,10 @@ class extract_sentinel2:
 
         step_day (default = 1) : int
 
+        is_RGB : boolean
+
+        is_NDVI : boolean
+
         Returns:
         -------
         None
@@ -161,9 +165,9 @@ class extract_sentinel2:
         ------
         To save data from a start date to an end date, call the method as follows:
 
-        >>> instance.save(start=(17,3,2017), end=(20,3,2017), step_day=1)
+        >>> instance.save(start=(17,3,2017), end=(20,3,2017), step_day=1, is_RGB = False, is_NDVI = True)
 
-        This will save the data from March 17, 2017, to March 20, 2017, with daily increments
+        This will save the data from March 17, 2017, to March 20, 2017, with daily increments for just NDVI bands
     '''
 
         # Create path if it does not exist
@@ -215,7 +219,6 @@ class extract_sentinel2:
                         file.write(response_RGB.content)
                 
                 if is_NDVI:
-                    print("Going to NDVUI")
                     sent2_NDVI = sent2_image.map(self.__calculate_ndvi)
                     image_sent2_NDVI = sent2_NDVI.mean().clip(self.polygon_roi)
                     url_NDVI = image_sent2_NDVI.getThumbURL({'min': 0.0, 'max': 1.0, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['NDVI'], 'format': 'png'})
@@ -256,5 +259,5 @@ if __name__ == '__main__':
 
     data = extract_sentinel2(beauvais_roi, roi_name)
 
-    data.save(time_start, time_stop)
+    data.save(time_start, time_stop, is_RGB = True, is_NDVI = False)
 
