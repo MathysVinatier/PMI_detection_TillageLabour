@@ -266,10 +266,10 @@ if __name__ == '__main__':
 
     roi_name = "Catillon"
 
-    time_start = (1,1,2018)
-    time_stop  = (1,1,2019)
+    time_start = (1,1,2024)
+    time_stop  = (1,1,2025)
 
     data = extract_sentinel2(catillon_roi, roi_name)
 
-    data.save(time_start, time_stop, is_RGB = True, is_NDVI = False)
+    data.save(time_start, time_stop, is_RGB = False, is_NDVI = True)
 
