@@ -121,7 +121,9 @@ class extract_sentinel1:
         longueur_barre = 30 
         i = 0
 
-        while self.current_date <= date_end:
+        self.bar_running = True
+
+        while (self.current_date <= date_end) and (self.bar_running==True):
         # Progress bar print out
             i = (self.current_date - start_date).days
             pourcentage = int((i / total_days) * 100)
@@ -242,7 +244,7 @@ class extract_sentinel1:
 
             # Increment current_date by the given step
             self.current_date += datetime.timedelta(days=step_day)
-
+        self.bar_running = False
         print("\nDone !\n")
 
 
@@ -255,18 +257,30 @@ if __name__ == '__main__':
     +---------------------------------------------------------------------+
     -> ROI : https://geojson.io/
     """
-    beauvais_roi = [
-        [2.4717675770780545, 48.49202395041567],
-        [2.4735192968839783, 48.49453601542879],
-        [2.47749656234393, 48.492794710870555],
-        [2.4757161258208384, 48.49032062341078]
-    ]
-    roi_name = "Beauvais"
+    catillon_roi = [[ 2.3703110742853255, 49.51292627390305 ],
+                    [ 2.370971146551426 , 49.512947460881065],
+                    [ 2.3717096053418345, 49.51387540856808 ],
+                    [ 2.3725654276000228, 49.51394410794967 ],
+                    [ 2.3735336940326306, 49.514016556731804],
+                    [ 2.3751526501201994, 49.514142515077   ],
+                    [ 2.3758244449259394, 49.51546420864673 ],
+                    [ 2.376769892661855 , 49.5152595998436  ],
+                    [ 2.3769904971330504, 49.51489130184069 ],
+                    [ 2.377116556831197 , 49.51464576829835 ],
+                    [ 2.3789759373771346, 49.513868237281514],
+                    [ 2.379259571697787 , 49.51290653708338 ],
+                    [ 2.380394108901271 , 49.511944817954486],
+                    [ 2.3820959148246175, 49.511105856057725],
+                    [ 2.3703093330577474, 49.50963252229451 ],
+                    [ 2.3710026613964885, 49.51212897839622 ],
+                    [ 2.3703093330577474, 49.51292699896456 ]]
 
-    time_start = (1,1,2023)
-    time_stop  = (1,3,2023)
+    roi_name = "Catillon"
 
-    data = extract_sentinel1(beauvais_roi, roi_name)
+    time_start = (1,1,2018)
+    time_stop  = (1,1,2019)
 
-    data.save(time_start, time_stop)
+    data = extract_sentinel1(catillon_roi, roi_name)
+
+    data.save(time_start)
 

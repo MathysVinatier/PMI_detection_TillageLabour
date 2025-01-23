@@ -3,14 +3,13 @@ import os
 import datetime
 import cv2
 
-class sentinelOne2df:
+class sentinelTwo2df:
     def __init__(self, dir_path):
         self.dir_path        = dir_path
         self.files           = os.listdir(dir_path)
         self.df              = pd.DataFrame()
         self.dates           = list()
-        self.density_vv_list = list()
-        self.density_vh_list = list()
+        self.density_ndvi_list = list()
 
 
     def get_density(self, image):
@@ -31,27 +30,21 @@ class sentinelOne2df:
             try :
                 string_date = d.strftime('%d_%m_%y')
 
-                image_vv    = f'{self.dir_path}/{string_date}_vv.png'
-                image_vh    = f'{self.dir_path}/{string_date}_vh.png'
+                image_ndvi    = f'{self.dir_path}/{string_date}_NDVI.png'
 
-                density_vv  = self.get_density(cv2.imread(image_vv, cv2.COLOR_BGR2GRAY))
-                density_vh  = self.get_density(cv2.imread(image_vh, cv2.COLOR_BGR2GRAY))
+                density_ndvi  = self.get_density(cv2.imread(image_ndvi, cv2.COLOR_BGR2GRAY))
 
-                self.density_vv_list.append(density_vv)
-                self.density_vh_list.append(density_vh)
+                self.density_ndvi_list.append(density_ndvi)
 
             except Exception as e:
                 print(f"For {d}\t> {e}")
-                self.density_vv_list.append(None)
-                self.density_vh_list.append(None)
+                self.density_ndvi_list.append(None)
 
-        self.df["VV"] = self.density_vv_list
-        self.df["VH"] = self.density_vh_list
+        self.df["NDVI"] = self.density_ndvi_list
         self.df = self.df.dropna()
-        self.df["CR"] = self.df["VV"].values/self.df["VH"].values
 
 
         return self.df
 
 if __name__ == '__main__':
-    print(sentinelOne2df("./Sentinel1_Images_Beauvais/2017").make_df())
+    print(sentinelTwo2df("./Sentinel2_Images_Catillon/2018").make_df())

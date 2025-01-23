@@ -53,6 +53,18 @@ class extract_sentinel2:
         )
 
         return image.updateMask(mask).divide(10000)
+    
+    def __calculate_ndvi(self, image):
+        """Calculates the NDVI for a Sentinel-2 image.
+
+        Args:
+            image (ee.Image): A Sentinel-2 image.
+
+        Returns:
+            ee.Image: An image with an additional NDVI band.
+        """
+        ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI')
+        return image.addBands(ndvi)
 
     def __filter_date(self, timestamp):
 
@@ -72,9 +84,7 @@ class extract_sentinel2:
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)).map(self.mask_s2_clouds)
         )
 
-        image_sent2_mean = image_sent2.mean()
-
-        return image_sent2_mean.clip(self.polygon_roi)
+        return image_sent2
 
     def __write_log(self, message, context=None):
         """
@@ -127,7 +137,7 @@ class extract_sentinel2:
             time.sleep(1)
 
 
-    def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1):
+    def save(self, start : tuple , end : Optional[Tuple] = None, step_day=1, is_RGB = True, is_NDVI = True):
         '''
         Save images based on the provided date range.
 
@@ -143,6 +153,10 @@ class extract_sentinel2:
 
         step_day (default = 1) : int
 
+        is_RGB : boolean
+
+        is_NDVI : boolean
+
         Returns:
         -------
         None
@@ -151,9 +165,9 @@ class extract_sentinel2:
         ------
         To save data from a start date to an end date, call the method as follows:
 
-        >>> instance.save(start=(17,3,2017), end=(20,3,2017), step_day=1)
+        >>> instance.save(start=(17,3,2017), end=(20,3,2017), step_day=1, is_RGB = False, is_NDVI = True)
 
-        This will save the data from March 17, 2017, to March 20, 2017, with daily increments
+        This will save the data from March 17, 2017, to March 20, 2017, with daily increments for just NDVI bands
     '''
 
         # Create path if it does not exist
@@ -186,7 +200,7 @@ class extract_sentinel2:
             try :
                 sent2_image = self.__filter_date(tuple_date)
                 
-                pixel_count = sent2_image.reduceRegion(
+                pixel_count = sent2_image.mean().reduceRegion(
                     reducer=ee.Reducer.count(),
                     geometry=self.polygon_roi,
                     scale=30
@@ -194,13 +208,25 @@ class extract_sentinel2:
 
                 if pixel_count is None or pixel_count == 0:
                     raise ValueError("Empty ROI")
+                
+                if is_RGB :
+                    image_sent2_RGB = sent2_image.mean().clip(self.polygon_roi)
+                    url_RGB = image_sent2_RGB.getThumbURL({'min': 0.0, 'max': 0.3, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['B4', 'B3', 'B2'], 'format': 'png'})
+                    response_RGB = requests.get(url_RGB, stream=True)
 
-                url = sent2_image.getThumbURL({'min': 0.0, 'max': 0.3, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['B4', 'B3', 'B2'], 'format': 'png'})
-                response = requests.get(url, stream=True)
+                    tif_path_RGB = self.path_to_image_folder + string_date+"_RGB.png"
+                    with open(tif_path_RGB, 'wb') as file:
+                        file.write(response_RGB.content)
+                
+                if is_NDVI:
+                    sent2_NDVI = sent2_image.map(self.__calculate_ndvi)
+                    image_sent2_NDVI = sent2_NDVI.mean().clip(self.polygon_roi)
+                    url_NDVI = image_sent2_NDVI.getThumbURL({'min': 0.0, 'max': 1.0, 'dimensions': 512,'region': self.polygon_roi, 'bands': ['NDVI'], 'format': 'png'})
+                    response_NDVI = requests.get(url_NDVI, stream=True)
 
-                tif_path = self.path_to_image_folder + string_date+".png"
-                with open(tif_path, 'wb') as file:
-                    file.write(response.content)
+                    tif_path_NDVI = self.path_to_image_folder + string_date+"_NDVI.png"
+                    with open(tif_path_NDVI, 'wb') as file:
+                        file.write(response_NDVI.content)
 
             except Exception as e:
                 self.__write_log(e, context=f'({self.current_date})')
@@ -220,18 +246,30 @@ if __name__ == '__main__':
     +---------------------------------------------------------------------+
     -> ROI : https://geojson.io/
     """
-    beauvais_roi = [
-        [2.4717675770780545, 48.49202395041567],
-        [2.4735192968839783, 48.49453601542879],
-        [2.47749656234393, 48.492794710870555],
-        [2.4757161258208384, 48.49032062341078]
-    ]
-    roi_name = "Beauvais"
+    catillon_roi = [[ 2.3703110742853255, 49.51292627390305 ],
+                    [ 2.370971146551426 , 49.512947460881065],
+                    [ 2.3717096053418345, 49.51387540856808 ],
+                    [ 2.3725654276000228, 49.51394410794967 ],
+                    [ 2.3735336940326306, 49.514016556731804],
+                    [ 2.3751526501201994, 49.514142515077   ],
+                    [ 2.3758244449259394, 49.51546420864673 ],
+                    [ 2.376769892661855 , 49.5152595998436  ],
+                    [ 2.3769904971330504, 49.51489130184069 ],
+                    [ 2.377116556831197 , 49.51464576829835 ],
+                    [ 2.3789759373771346, 49.513868237281514],
+                    [ 2.379259571697787 , 49.51290653708338 ],
+                    [ 2.380394108901271 , 49.511944817954486],
+                    [ 2.3820959148246175, 49.511105856057725],
+                    [ 2.3703093330577474, 49.50963252229451 ],
+                    [ 2.3710026613964885, 49.51212897839622 ],
+                    [ 2.3703093330577474, 49.51292699896456 ]]
+
+    roi_name = "Catillon"
 
     time_start = (1, 1, 2020)
     time_stop  = (31, 12, 2023)
 
-    data = extract_sentinel2(beauvais_roi, roi_name)
+    data = extract_sentinel2(catillon_roi, roi_name)
 
-    data.save(time_start, time_stop)
+    data.save(time_start, time_stop, is_RGB = False, is_NDVI = True)
 
