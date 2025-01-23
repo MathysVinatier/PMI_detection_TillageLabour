@@ -228,8 +228,8 @@ if __name__ == '__main__':
     ]
     roi_name = "Beauvais"
 
-    time_start = (1,6,2023)
-    time_stop  = (20,6,2023)
+    time_start = (1, 1, 2020)
+    time_stop  = (31, 12, 2023)
 
     data = extract_sentinel2(beauvais_roi, roi_name)
 
