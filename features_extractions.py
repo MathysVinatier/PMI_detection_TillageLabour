@@ -101,8 +101,8 @@ def preprocess_image(image_path):
     # Normalisation of the light, based on the reference image
     matched_image = exposure.match_histograms(image_gray, image_reference_gray) 
     
-    mask_name = image_path.stem + "_gray" + image_path.suffix 
-    cv2.imwrite(str(image_path.parent / mask_name), matched_image)
+    mask_name = image_path.stem[:-4] + "_gray" + image_path.suffix 
+    cv2.imwrite(str(image_path.parent / "grays" / mask_name), matched_image)
 
 
 def create_mask(image_path):    
@@ -124,11 +124,11 @@ def create_mask(image_path):
 
     # Creation of the mask
     binary_mask = np.where(image > 0, 1, 0).astype(np.uint8)
-    mask_name = image_path.stem + "_mask" + image_path.suffix
-    cv2.imwrite(str(image_path.parent / mask_name), binary_mask * 255)
+    mask_name = image_path.stem[:-4] + "_mask" + image_path.suffix
+    cv2.imwrite(str(image_path.parent / "masks" / mask_name), binary_mask * 255)
 
 
-def create_pathfiles_csv(folder):
+def create_pathfiles_csv(folder_masks, folder_grays):
     """
     Create a CSV containig the paths of the images/masks
 
@@ -146,13 +146,23 @@ def create_pathfiles_csv(folder):
     mask_paths = []
     data = []
 
-    for filename in os.listdir(folder):
+    for filename in os.listdir(folder_grays):
         if filename.endswith(".png"):
-            file_path = os.path.join(folder, filename)
-            if filename.endswith("_mask.png"):
-                mask_paths.append(file_path)
-            elif filename.endswith("_gray.png"):
-                image_paths.append(file_path)
+            file_path = os.path.join(folder_grays, filename)
+            image_paths.append(file_path)
+
+    for filename in os.listdir(folder_masks):
+        if filename.endswith(".png"):
+            file_path = os.path.join(folder_masks, filename)
+            mask_paths.append(file_path)
+
+    # for filename in os.listdir(folder):
+    #     if filename.endswith(".png"):
+    #         file_path = os.path.join(folder, filename)
+    #         if filename.endswith("_mask.png"):
+    #             mask_paths.append(file_path)
+    #         elif filename.endswith("_gray.png"):
+    #             image_paths.append(file_path)
 
     # Association image/mask based on their names
     for image_path in image_paths:
@@ -163,7 +173,7 @@ def create_pathfiles_csv(folder):
             data.append({'Id': image_id[:-5], 'path_image': image_path, 'path_mask': mask_path})
 
     df = pd.DataFrame(data)
-    df.to_csv('pathfiles.csv', index=False)
+    df.to_csv('pathfiles_Catillon.csv', index=False)
 
 
 def process_mask_and_image(image_filepath, mask_filepath, mask_name):
@@ -211,13 +221,12 @@ def process_csv(path_csv, path_output):
     return combined_df
 
 
-
 """
 #================================================
 #         TO CREATE PREPROCESSED IMAGES
 #================================================
 
-folder = "Sentinel2_Images_Beauvais"
+folder = "Analysis/Sentinel2_Images_Catillon"
 image_paths = []
 gray_paths = []
 
@@ -238,7 +247,7 @@ for path in image_paths:
 #         TO CREATE MASKS
 #================================================
 
-folder = "Sentinel2_Images_Beauvais"
+folder = "Analysis/Sentinel2_Images_Catillon"
 image_paths = []
 mask_paths = []
 
@@ -261,21 +270,20 @@ for path in image_paths:
 #         TO CREATE CSV PATHFILES
 #================================================
 
-folder = folder = "Sentinel2_Images_Beauvais"
-create_pathfiles_csv(folder)
+folder_masks = "Analysis/Sentinel2_Images_Catillon/masks"
+folder_grays = "Analysis/Sentinel2_Images_Catillon/grays"
+create_pathfiles_csv(folder_masks, folder_grays)
 """
 
-
+"""
 #================================================
 #         TO EXTRACT FEATURES
 #================================================
 
-csv_file =  "pathfiles_Beauvais.csv"
-output_path = "extraction_results.csv"
+csv_file =  "pathfiles_Catillon.csv"
+output_path = "extraction_results_Catillon.csv"
 process_csv(csv_file, output_path)
-
-
-
+"""
 
 
 
