@@ -12,12 +12,11 @@ import time
 
 class extract_sentinel1:
 
-    project_name = "ee-sentinel-analysis"
 
-    def __init__(self, roi, roi_name):
+    def __init__(self, roi, roi_name, gee_project_name = "ee-sentinel-analysis"):
 
         ee.Authenticate()
-        ee.Initialize(project=self.project_name)
+        ee.Initialize(project=gee_project_name)
 
         # Load the Sentinel-1 ImageCollection
         self.sentinel_1 = ee.ImageCollection('COPERNICUS/S1_GRD')
