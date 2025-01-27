@@ -54,7 +54,6 @@ def plot_PCA(df, numeric_columns, plot):
         sns.scatterplot(
             x="PC1", y="PC2", hue="Month", data=df, palette=palette, s=100, legend="full"
         )
-
         plt.title("PCA")
         plt.legend(title="Month")
         plt.show()
@@ -93,7 +92,7 @@ def plot_inertia(df):
     plt.show()
 
 
-def plot_prediction_images(folder, df, month):    
+def plot_images_per_month(folder, df, month):    
     df["Month"] = [int(i.split("_")[1]) for i in df["mask_name"]]
     df = df[df["Month"] == month]
     num_images = len(df)
@@ -112,7 +111,7 @@ def plot_prediction_images(folder, df, month):
                 ax.set_title(f"Date: {current_date_result}")
                 ax.axis("off") 
             except FileNotFoundError:
-                ax.set_title(f"Image not found for {current_date_result.strftime('%d_%m_%y')} at {fname}")
+                ax.set_title(f"Image not found for {current_date_result}")
                 ax.axis("off")
 
     plt.tight_layout()
@@ -122,7 +121,7 @@ def plot_prediction_images(folder, df, month):
 #================================================
 #             FEATURES PREPARATION
 #================================================
-file = "extraction_results_Catillon.csv"
+file = "Features_extraction_analysis/extraction_results_Catillon.csv"
 data = pd.read_csv(file)
 
 # Keeping only numerical columns (features)
@@ -146,7 +145,7 @@ numeric_columns = data_scaled.select_dtypes(include=['float64', 'int64']).column
 #================================================
 #             IMAGES CHECKING
 #================================================
-#plot_prediction_images("Analysis/Sentinel2_Images_Catillon/grays", data_scaled, 12)
+#plot_images_per_month("Features_extraction_analysis/grays", data_scaled, 12)
 
 
 """
@@ -166,14 +165,14 @@ data_scaled['Cluster'] = kmeans.labels_
 #================================================
 #                DBSCAN
 #================================================
-pca_result, pca_df = plot_PCA(data_scaled, numeric_columns, plot=False)
+pca_result, pca_df = plot_PCA(data_scaled, numeric_columns, plot=True)
 
 dbscan = DBSCAN(eps=1.1, min_samples=5) 
 labels = dbscan.fit_predict(pca_result)
 data_scaled['Cluster'] = labels
 
-plot_DBSCAN(data_scaled, pca_df)
-plot_month_repartition(data_scaled)
+#plot_DBSCAN(data_scaled, pca_df)
+#plot_month_repartition(data_scaled)
 """
 
 """
