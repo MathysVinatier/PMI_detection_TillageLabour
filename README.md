@@ -5,7 +5,7 @@ The purpose of this project is to use Satellite imagery to detect and estimate i
 
 ## Description :
 - [Datasets](Datasets/) refer to the different csv used and the jupyter file that we use for analysis of the dataset.
-- [Features exrtaction](Features_extraction_analysis/) gathers all the files (images + code) used for the second method.
+- [Features extraction](Features_extraction_analysis/) gathers all the files (images + code) used for the second method.
 
 Author :
 - LEGRAND Aymeric
