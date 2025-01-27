@@ -65,15 +65,21 @@ sentinelTwo2df("./Sentinel2_Images_Catillon/2018").make_df()
 
 These folders are refering to all the scrapped images that has been exported from the extract_sentinelX tools. We will find different images formatted this way *Sentinel[X]_Images_[ROI]/[year]/[dd]_[mm]_[yy]_[BandWidth].png*
 
-<p align="left">
-    <img src="Sentinel1_Images_Beauvais/2017/01_01_17_vh.png" alt="Image 1" width="150">
-    <img src="Sentinel1_Images_Beauvais/2017/01_01_17_vv.png" alt="Image 2" width="150">
-    <img src="Sentinel2_Images_Beauvais/01_03_21.png" alt="Image 3" width="150">
-    <img src="Sentinel2_Images_Catillon/2018/01_08_18_NDVI.png" alt="Image 4" width="150">
-</p>
-<p align="left">
-  <b>Image VH</b> &nbsp;&nbsp;&nbsp;&nbsp;
-  <b>Image VV</b> &nbsp;&nbsp;&nbsp;&nbsp;
-  <b>Image RGB</b> &nbsp;&nbsp;&nbsp;&nbsp;
-  <b>Image NEDVI</b>
-</p>
+<div align="center" style="display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+  <div style="text-align: center;">
+    <img src="Sentinel1_Images_Beauvais/2017/01_01_17_vh.png" alt="Image VH" width="150" height="80">
+    <p><b>Image VH</b></p>
+  </div>
+  <div style="text-align: center;">
+    <img src="Sentinel1_Images_Beauvais/2017/01_01_17_vv.png" alt="Image VV" width="150" height="80">
+    <p><b>Image VV</b></p>
+  </div>
+  <div style="text-align: center;">
+    <img src="Sentinel2_Images_Beauvais/01_03_21.png" alt="Image RGB" width="150" height="80">
+    <p><b>Image RGB</b></p>
+  </div>
+  <div style="text-align: center;">
+    <img src="Sentinel2_Images_Catillon/2018/01_08_18_NDVI.png" alt="Image NDVI" width="150" height="80">
+    <p><b>Image NDVI</b></p>
+  </div>
+</div>
